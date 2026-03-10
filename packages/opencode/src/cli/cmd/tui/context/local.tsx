@@ -1,5 +1,5 @@
 import { createStore } from "solid-js/store"
-import { batch, createEffect, createMemo } from "solid-js"
+import { batch, createEffect, createMemo, createSignal } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
 import { uniqueBy } from "remeda"
@@ -8,6 +8,7 @@ import { Global } from "@/global"
 import { iife } from "@/util/iife"
 import { createSimpleContext } from "./helper"
 import { useToast } from "../ui/toast"
+import { isWorkflowModel } from "gitlab-ai-provider"
 import { Provider } from "@/provider/provider"
 import { useArgs } from "./args"
 import { useSDK } from "./sdk"
@@ -201,6 +202,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         )
       })
 
+      const [subModelName, setSubModelName] = createSignal<string | undefined>(undefined)
+      const [discoverTrigger, setDiscoverTrigger] = createSignal(0)
+
       return {
         current: currentModel,
         get ready() {
@@ -211,6 +215,16 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         },
         favorite() {
           return modelStore.favorite
+        },
+        gitlabWorkflow: {
+          subModelName,
+          setSubModelName,
+          discoverTrigger,
+          rediscover() {
+            setSubModelName(undefined)
+            sdk.fetch(`${sdk.url}/plugin/gitlab/clear`, { method: "POST" }).catch(() => {})
+            setDiscoverTrigger((n) => n + 1)
+          },
         },
         parsed: createMemo(() => {
           const value = currentModel()
@@ -223,9 +237,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
           const provider = sync.data.provider.find((x) => x.id === value.providerID)
           const info = provider?.models[value.modelID]
+          const base = info?.name ?? value.modelID
+          const sub = subModelName()
           return {
             provider: provider?.name ?? value.providerID,
-            model: info?.name ?? value.modelID,
+            model: sub ? `${base} (${sub})` : base,
             reasoning: info?.capabilities?.reasoning ?? false,
           }
         }),
@@ -284,6 +300,16 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
                 duration: 3000,
               })
               return
+            }
+            const prev = currentModel()
+            if (
+              options?.recent &&
+              prev?.providerID === model.providerID &&
+              prev?.modelID === model.modelID &&
+              isWorkflowModel(model.modelID)
+            ) {
+              setSubModelName(undefined)
+              setDiscoverTrigger((n) => n + 1)
             }
             setModelStore("model", agent.current().name, model)
             if (options?.recent) {

@@ -41,8 +41,10 @@ import { Filesystem } from "@/util/filesystem"
 import { QuestionRoutes } from "./routes/question"
 import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
+import { GitLabWorkflowModelSelectRoutes } from "./routes/gitlab-workflow-model-select"
 import { MDNS } from "./mdns"
 import { lazy } from "@/util/lazy"
+import { Plugin } from "../plugin"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -245,10 +247,41 @@ export namespace Server {
       .route("/session", SessionRoutes())
       .route("/permission", PermissionRoutes())
       .route("/question", QuestionRoutes())
+      .route("/gitlab-workflow-model-select", GitLabWorkflowModelSelectRoutes())
       .route("/provider", ProviderRoutes())
       .route("/", FileRoutes())
       .route("/mcp", McpRoutes())
       .route("/tui", TuiRoutes())
+      .all("/plugin/*", async (c, next) => {
+        const plugins = await Plugin.list()
+        for (const hook of plugins) {
+          if (!hook.route) continue
+          const route =
+            typeof hook.route === "function"
+              ? { prefix: hook.auth?.provider ?? "unknown", handler: hook.route }
+              : hook.route
+          const prefix = route.prefix
+          const pluginApp = new Hono()
+          route.handler(pluginApp)
+          const sub = new Hono().route(`/plugin/${prefix}`, pluginApp)
+          const req = new Request(c.req.raw)
+          const auth = await Auth.get(prefix).catch(() => null)
+          if (auth?.type === "oauth") {
+            req.headers.set("x-plugin-auth-token", auth.access)
+            if (auth.enterpriseUrl) req.headers.set("x-plugin-auth-instance", auth.enterpriseUrl)
+          } else if (auth?.type === "api") {
+            req.headers.set("x-plugin-auth-token", auth.key)
+          }
+          const envToken = process.env[`${prefix.toUpperCase().replace(/-/g, "_")}_TOKEN`]
+          if (!req.headers.get("x-plugin-auth-token") && envToken) {
+            req.headers.set("x-plugin-auth-token", envToken)
+          }
+          req.headers.set("x-plugin-directory", Instance.directory)
+          const res = await sub.fetch(req)
+          if (res.status !== 404) return res
+        }
+        return next()
+      })
       .post(
         "/instance/dispose",
         describeRoute({

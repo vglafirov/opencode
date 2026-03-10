@@ -33,6 +33,9 @@ import { ToastProvider, useToast } from "./ui/toast"
 import { ExitProvider, useExit } from "./context/exit"
 import { Session as SessionApi } from "@/session"
 import { TuiEvent } from "./event"
+import { DialogGitLabWorkflowModel } from "./component/dialog-gitlab-workflow-model"
+import { GitLabWorkflowModelSelect } from "@/session/gitlab-workflow-model-select"
+import { isWorkflowModel } from "gitlab-ai-provider"
 import { KVProvider, useKV } from "./context/kv"
 import { Provider } from "@/provider/provider"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
@@ -747,6 +750,101 @@ function App() {
       message: `OpenCode v${evt.properties.version} is available. Run 'opencode upgrade' to update manually.`,
       duration: 10000,
     })
+  })
+
+  let discoveredFor: string | undefined
+  let lastTrigger = 0
+  createEffect(() => {
+    const current = local.model.current()
+    if (!current) return
+    const trigger = local.model.gitlabWorkflow.discoverTrigger()
+    if (!isWorkflowModel(current.modelID)) {
+      local.model.gitlabWorkflow.setSubModelName(undefined)
+      return
+    }
+    if (discoveredFor === current.modelID && trigger === lastTrigger) return
+    discoveredFor = current.modelID
+    lastTrigger = trigger
+    untrack(() => {
+      toast.show({ variant: "info", message: "Discovering GitLab DAP models...", duration: 60000 })
+      sdk
+        .fetch(`${sdk.url}/plugin/gitlab/discover`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fresh: trigger > 0 }),
+        })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        })
+        .then(async (data: any) => {
+          if (data.status === "no_provider") {
+            toast.dismiss()
+            toast.show({ variant: "error", message: data.error || "GitLab provider not configured", duration: 5000 })
+          } else if (data.status === "no_models") {
+            toast.dismiss()
+            toast.show({ variant: "warning", message: "No workflow models available", duration: 5000 })
+          } else if (data.status === "asked") {
+            toast.dismiss()
+            const res = await sdk
+              .fetch(`${sdk.url}/gitlab-workflow-model-select/ask`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ models: data.models }),
+              })
+              .then((r) => r.json())
+            if (res.ref) {
+              sdk
+                .fetch(`${sdk.url}/plugin/gitlab/reply`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ref: res.ref }),
+                })
+                .catch(() => {})
+              const match = data.models?.find((m: any) => m.ref === res.ref)
+              local.model.gitlabWorkflow.setSubModelName(match?.name ?? res.ref)
+            }
+          } else if (data.status === "pinned" || data.status === "cached" || data.status === "default") {
+            toast.dismiss()
+            local.model.gitlabWorkflow.setSubModelName(data.model?.name)
+          }
+        })
+        .catch(() => {
+          toast.dismiss()
+          toast.show({ variant: "error", message: "Failed to discover workflow models", duration: 5000 })
+        })
+    })
+  })
+
+  sdk.event.on(GitLabWorkflowModelSelect.Event.Asked.type as any, (evt: any) => {
+    toast.dismiss()
+    dialog.replace(() => (
+      <DialogGitLabWorkflowModel
+        requestID={evt.properties.requestID}
+        models={evt.properties.models}
+        onReply={(ref) => {
+          sdk
+            .fetch(`${sdk.url}/gitlab-workflow-model-select/${evt.properties.requestID}/reply`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ref }),
+            })
+            .catch(() => {})
+          if (ref) {
+            sdk
+              .fetch(`${sdk.url}/plugin/gitlab/reply`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ref }),
+              })
+              .catch(() => {})
+            const match = evt.properties.models.find((m: any) => m.ref === ref)
+            local.model.gitlabWorkflow.setSubModelName(match?.name ?? ref)
+          }
+          dialog.clear()
+        }}
+      />
+    ))
   })
 
   return (

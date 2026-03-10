@@ -75,6 +75,10 @@ function init() {
         message: "An unknown error has occurred",
       })
     },
+    dismiss() {
+      if (timeoutHandle) clearTimeout(timeoutHandle)
+      setStore("currentToast", null)
+    },
     get currentToast(): ToastOptions | null {
       return store.currentToast
     },

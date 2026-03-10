@@ -40,7 +40,7 @@ import { createGateway } from "@ai-sdk/gateway"
 import { createTogetherAI } from "@ai-sdk/togetherai"
 import { createPerplexity } from "@ai-sdk/perplexity"
 import { createVercel } from "@ai-sdk/vercel"
-import { createGitLab, VERSION as GITLAB_PROVIDER_VERSION } from "@gitlab/gitlab-ai-provider"
+import { createGitLab, VERSION as GITLAB_PROVIDER_VERSION, isWorkflowModel } from "gitlab-ai-provider"
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers"
 import { GoogleAuth } from "google-auth-library"
 import { ProviderTransform } from "./transform"
@@ -105,6 +105,7 @@ export namespace Provider {
     "@ai-sdk/togetherai": createTogetherAI,
     "@ai-sdk/perplexity": createPerplexity,
     "@ai-sdk/vercel": createVercel,
+    "gitlab-ai-provider": createGitLab,
     "@gitlab/gitlab-ai-provider": createGitLab,
     // @ts-ignore (TODO: kill this code so we dont have to maintain it)
     "@ai-sdk/github-copilot": createGitHubCopilotOpenAICompatible,
@@ -497,14 +498,25 @@ export namespace Provider {
           },
         },
         async getModel(sdk: ReturnType<typeof createGitLab>, modelID: string) {
-          return sdk.agenticChat(modelID, {
+          const opts = {
             aiGatewayHeaders,
             featureFlags: {
               duo_agent_platform_agentic_chat: true,
               duo_agent_platform: true,
               ...(providerConfig?.options?.featureFlags || {}),
             },
-          })
+          }
+          if (isWorkflowModel(modelID)) {
+            const model = sdk.workflowChat(modelID, {
+              ...opts,
+              workingDirectory: Instance.directory,
+            })
+            if (!model.selectedModelRef) {
+              model.selectedModelRef = "default"
+            }
+            return model
+          }
+          return sdk.agenticChat(modelID, opts)
         },
       }
     },
@@ -959,6 +971,7 @@ export namespace Provider {
       if (auth) {
         const options = await plugin.auth.loader(() => Auth.get(providerID) as any, database[plugin.auth.provider])
         const opts = options ?? {}
+        if (opts.getModel) modelLoaders[providerID] = opts.getModel
         const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
       }
@@ -974,6 +987,7 @@ export namespace Provider {
               database[enterpriseProviderID],
             )
             const opts = enterpriseOptions ?? {}
+            if (opts.getModel) modelLoaders[enterpriseProviderID] = opts.getModel
             const patch: Partial<Info> = providers[enterpriseProviderID]
               ? { options: opts }
               : { source: "custom", options: opts }
@@ -1202,7 +1216,9 @@ export namespace Provider {
       const language = s.modelLoaders[model.providerID]
         ? await s.modelLoaders[model.providerID](sdk, model.api.id, provider.options)
         : sdk.languageModel(model.api.id)
-      s.models.set(key, language)
+      if (!isWorkflowModel(model.api.id)) {
+        s.models.set(key, language)
+      }
       return language
     } catch (e) {
       if (e instanceof NoSuchModelError)

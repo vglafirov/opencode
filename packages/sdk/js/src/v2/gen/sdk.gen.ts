@@ -40,6 +40,10 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
+  GitlabWorkflowModelSelectAskResponses,
+  GitlabWorkflowModelSelectListResponses,
+  GitlabWorkflowModelSelectReplyErrors,
+  GitlabWorkflowModelSelectReplyResponses,
   GlobalConfigGetResponses,
   GlobalConfigUpdateErrors,
   GlobalConfigUpdateResponses,
@@ -2480,6 +2484,116 @@ export class Question extends HeyApiClient {
   }
 }
 
+export class GitlabWorkflowModelSelect extends HeyApiClient {
+  /**
+   * List pending workflow model selections
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<GitlabWorkflowModelSelectListResponses, unknown, ThrowOnError>({
+      url: "/gitlab-workflow-model-select",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Ask user to select a workflow model
+   */
+  public ask<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      models?: Array<{
+        name: string
+        ref: string
+        isDefault?: boolean
+      }>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "models" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<GitlabWorkflowModelSelectAskResponses, unknown, ThrowOnError>({
+      url: "/gitlab-workflow-model-select/ask",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Reply to workflow model selection
+   */
+  public reply<ThrowOnError extends boolean = false>(
+    parameters: {
+      requestID: string
+      directory?: string
+      workspace?: string
+      ref?: string | null
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "requestID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "ref" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      GitlabWorkflowModelSelectReplyResponses,
+      GitlabWorkflowModelSelectReplyErrors,
+      ThrowOnError
+    >({
+      url: "/gitlab-workflow-model-select/{requestID}/reply",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Oauth extends HeyApiClient {
   /**
    * OAuth authorize
@@ -3956,6 +4070,11 @@ export class OpencodeClient extends HeyApiClient {
   private _question?: Question
   get question(): Question {
     return (this._question ??= new Question({ client: this.client }))
+  }
+
+  private _gitlabWorkflowModelSelect?: GitlabWorkflowModelSelect
+  get gitlabWorkflowModelSelect(): GitlabWorkflowModelSelect {
+    return (this._gitlabWorkflowModelSelect ??= new GitlabWorkflowModelSelect({ client: this.client }))
   }
 
   private _provider?: Provider

@@ -957,6 +957,26 @@ export type EventWorktreeFailed = {
   }
 }
 
+export type EventGitlabWorkflowModelSelectAsked = {
+  type: "gitlab_workflow_model_select.asked"
+  properties: {
+    requestID: string
+    models: Array<{
+      name: string
+      ref: string
+      isDefault?: boolean
+    }>
+  }
+}
+
+export type EventGitlabWorkflowModelSelectReplied = {
+  type: "gitlab_workflow_model_select.replied"
+  properties: {
+    requestID: string
+    ref: string | null
+  }
+}
+
 export type Event =
   | EventInstallationUpdated
   | EventInstallationUpdateAvailable
@@ -1003,6 +1023,8 @@ export type Event =
   | EventPtyDeleted
   | EventWorktreeReady
   | EventWorktreeFailed
+  | EventGitlabWorkflowModelSelectAsked
+  | EventGitlabWorkflowModelSelectReplied
 
 export type GlobalEvent = {
   directory: string
@@ -3911,6 +3933,86 @@ export type QuestionRejectResponses = {
 }
 
 export type QuestionRejectResponse = QuestionRejectResponses[keyof QuestionRejectResponses]
+
+export type GitlabWorkflowModelSelectListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/gitlab-workflow-model-select"
+}
+
+export type GitlabWorkflowModelSelectListResponses = {
+  /**
+   * List of pending selections
+   */
+  200: Array<{
+    requestID: string
+    models: Array<unknown>
+  }>
+}
+
+export type GitlabWorkflowModelSelectListResponse =
+  GitlabWorkflowModelSelectListResponses[keyof GitlabWorkflowModelSelectListResponses]
+
+export type GitlabWorkflowModelSelectAskData = {
+  body?: {
+    models: Array<{
+      name: string
+      ref: string
+      isDefault?: boolean
+    }>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/gitlab-workflow-model-select/ask"
+}
+
+export type GitlabWorkflowModelSelectAskResponses = {
+  /**
+   * Selection result
+   */
+  200: unknown
+}
+
+export type GitlabWorkflowModelSelectReplyData = {
+  body?: {
+    ref: string | null
+  }
+  path: {
+    requestID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/gitlab-workflow-model-select/{requestID}/reply"
+}
+
+export type GitlabWorkflowModelSelectReplyErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type GitlabWorkflowModelSelectReplyError =
+  GitlabWorkflowModelSelectReplyErrors[keyof GitlabWorkflowModelSelectReplyErrors]
+
+export type GitlabWorkflowModelSelectReplyResponses = {
+  /**
+   * Reply accepted
+   */
+  200: boolean
+}
+
+export type GitlabWorkflowModelSelectReplyResponse =
+  GitlabWorkflowModelSelectReplyResponses[keyof GitlabWorkflowModelSelectReplyResponses]
 
 export type ProviderListData = {
   body?: never

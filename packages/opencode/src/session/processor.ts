@@ -209,7 +209,18 @@ export namespace SessionProcessor {
                       state: {
                         status: "error",
                         input: value.input ?? match.state.input,
-                        error: (value.error as any).toString(),
+                        error: (() => {
+                          const err = value.error as any
+                          if (err instanceof Error) return err.message
+                          if (typeof err === "string") return err
+                          if (typeof err === "object" && err !== null) {
+                            if (typeof err.output === "string") return err.output
+                            if (typeof err.error === "string") return err.error
+                            if (typeof err.message === "string") return err.message
+                            return JSON.stringify(err)
+                          }
+                          return String(err)
+                        })(),
                         time: {
                           start: match.state.time.start,
                           end: Date.now(),
@@ -339,8 +350,20 @@ export namespace SessionProcessor {
                   currentText = undefined
                   break
 
-                case "finish":
+                case "finish": {
+                  if (value.totalUsage) {
+                    const usage = Session.getUsage({
+                      model: input.model,
+                      usage: value.totalUsage,
+                      metadata: undefined,
+                    })
+                    input.assistantMessage.finish = value.finishReason
+                    input.assistantMessage.cost += usage.cost
+                    input.assistantMessage.tokens = usage.tokens
+                    await Session.updateMessage(input.assistantMessage)
+                  }
                   break
+                }
 
                 default:
                   log.info("unhandled", {

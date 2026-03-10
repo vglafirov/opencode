@@ -22,6 +22,7 @@ import { SystemPrompt } from "./system"
 import { Flag } from "@/flag/flag"
 import { PermissionNext } from "@/permission/next"
 import { Auth } from "@/auth"
+import { GitLabWorkflowLanguageModel } from "gitlab-ai-provider"
 
 export namespace LLM {
   const log = Log.create({ service: "llm" })
@@ -167,6 +168,24 @@ export namespace LLM {
         inputSchema: jsonSchema({ type: "object", properties: {} }),
         execute: async () => ({ output: "", title: "", metadata: {} }),
       })
+    }
+
+    if (language instanceof GitLabWorkflowLanguageModel) {
+      language.toolExecutor = async (name, args) => {
+        const t = tools[name]
+        if (!t || !t.execute) return { result: "", error: `Unknown tool: ${name}` }
+        try {
+          const parsed = JSON.parse(args)
+          const out = await t.execute(parsed, {
+            toolCallId: crypto.randomUUID(),
+            messages: [],
+            abortSignal: input.abort,
+          })
+          return { result: JSON.stringify(out) }
+        } catch (e) {
+          return { result: "", error: e instanceof Error ? e.message : String(e) }
+        }
+      }
     }
 
     return streamText({
