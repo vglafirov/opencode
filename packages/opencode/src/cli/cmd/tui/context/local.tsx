@@ -202,6 +202,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       })
 
       const [subModelName, setSubModelName] = createSignal<string | undefined>(undefined)
+      const [rediscoverCount, setRediscoverCount] = createSignal(0)
 
       return {
         current: currentModel,
@@ -217,6 +218,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         subModel: {
           name: subModelName,
           setName: setSubModelName,
+          rediscoverCount,
+          rediscover() {
+            setSubModelName(undefined)
+            setRediscoverCount((n) => n + 1)
+          },
         },
         parsed: createMemo(() => {
           const value = currentModel()
@@ -292,6 +298,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
                 duration: 3000,
               })
               return
+            }
+            const prev = currentModel()
+            if (options?.recent && prev?.providerID === model.providerID && prev?.modelID === model.modelID) {
+              setRediscoverCount((n) => n + 1)
+              setSubModelName(undefined)
             }
             setModelStore("model", agent.current().name, model)
             if (options?.recent) {

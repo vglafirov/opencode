@@ -35,7 +35,6 @@ import { Session as SessionApi } from "@/session"
 import { TuiEvent } from "./event"
 import { DialogPluginSelect } from "./component/dialog-plugin-select"
 import { PluginSelect } from "@/session/plugin-select"
-import { Plugin } from "@/plugin"
 import { KVProvider, useKV } from "./context/kv"
 import { Provider } from "@/provider/provider"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
@@ -753,18 +752,50 @@ function App() {
   })
 
   let lastSelect = ""
+  let lastRediscover = 0
   createEffect(() => {
     const current = local.model.current()
     if (!current) return
+    const rediscover = local.model.subModel.rediscoverCount()
     const key = `${current.providerID}/${current.modelID}`
-    if (key === lastSelect) return
+    if (key === lastSelect && rediscover === lastRediscover) return
+    const fresh = key === lastSelect && rediscover !== lastRediscover
     lastSelect = key
+    lastRediscover = rediscover
     untrack(() => {
-      const out: { subModel?: string; displayName?: string } = {}
-      Plugin.trigger("model.select", { providerID: current.providerID, modelID: current.modelID }, out).then(() => {
-        if (out.displayName) local.model.subModel.setName(out.displayName)
-        else local.model.subModel.setName(undefined)
-      })
+      local.model.subModel.setName(undefined)
+      sdk
+        .fetch(`${sdk.url}/plugin/gitlab/discover`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fresh }),
+        })
+        .then(async (r) => {
+          const text = await r.text()
+          if (!r.ok) {
+            toast.show({
+              variant: "error",
+              message: `discover: HTTP ${r.status}: ${text.slice(0, 100)}`,
+              duration: 5000,
+            })
+            return null
+          }
+          try {
+            return JSON.parse(text)
+          } catch {
+            toast.show({ variant: "error", message: `discover: invalid JSON: ${text.slice(0, 100)}`, duration: 5000 })
+            return null
+          }
+        })
+        .then((data: any) => {
+          if (!data) return
+          if (data.error) toast.show({ variant: "error", message: `discover: ${data.error}`, duration: 5000 })
+          if (data.model?.name) local.model.subModel.setName(data.model.name)
+          else if (data.status === "no_provider" || data.status === "no_models") local.model.subModel.setName("default")
+        })
+        .catch((e: any) => {
+          toast.show({ variant: "error", message: `discover: ${e?.message ?? e}`, duration: 5000 })
+        })
     })
   })
 

@@ -271,6 +271,7 @@ export namespace Server {
             if (auth.enterpriseUrl) req.headers.set("x-plugin-auth-instance", auth.enterpriseUrl)
           } else if (auth?.type === "api") {
             req.headers.set("x-plugin-auth-token", auth.key)
+            if (auth.enterpriseUrl) req.headers.set("x-plugin-auth-instance", auth.enterpriseUrl)
           }
           const envToken = process.env[`${prefix.toUpperCase().replace(/-/g, "_")}_TOKEN`]
           if (!req.headers.get("x-plugin-auth-token") && envToken) {
