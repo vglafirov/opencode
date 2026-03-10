@@ -957,23 +957,24 @@ export type EventWorktreeFailed = {
   }
 }
 
-export type EventGitlabWorkflowModelSelectAsked = {
-  type: "gitlab_workflow_model_select.asked"
+export type EventPluginSelectAsked = {
+  type: "plugin_select.asked"
   properties: {
     requestID: string
-    models: Array<{
-      name: string
-      ref: string
+    title: string
+    options: Array<{
+      label: string
+      value: string
       isDefault?: boolean
     }>
   }
 }
 
-export type EventGitlabWorkflowModelSelectReplied = {
-  type: "gitlab_workflow_model_select.replied"
+export type EventPluginSelectReplied = {
+  type: "plugin_select.replied"
   properties: {
     requestID: string
-    ref: string | null
+    value: string | null
   }
 }
 
@@ -1023,8 +1024,8 @@ export type Event =
   | EventPtyDeleted
   | EventWorktreeReady
   | EventWorktreeFailed
-  | EventGitlabWorkflowModelSelectAsked
-  | EventGitlabWorkflowModelSelectReplied
+  | EventPluginSelectAsked
+  | EventPluginSelectReplied
 
 export type GlobalEvent = {
   directory: string
@@ -3934,34 +3935,35 @@ export type QuestionRejectResponses = {
 
 export type QuestionRejectResponse = QuestionRejectResponses[keyof QuestionRejectResponses]
 
-export type GitlabWorkflowModelSelectListData = {
+export type PluginSelectListData = {
   body?: never
   path?: never
   query?: {
     directory?: string
     workspace?: string
   }
-  url: "/gitlab-workflow-model-select"
+  url: "/plugin-select"
 }
 
-export type GitlabWorkflowModelSelectListResponses = {
+export type PluginSelectListResponses = {
   /**
    * List of pending selections
    */
   200: Array<{
     requestID: string
-    models: Array<unknown>
+    title: string
+    options: Array<unknown>
   }>
 }
 
-export type GitlabWorkflowModelSelectListResponse =
-  GitlabWorkflowModelSelectListResponses[keyof GitlabWorkflowModelSelectListResponses]
+export type PluginSelectListResponse = PluginSelectListResponses[keyof PluginSelectListResponses]
 
-export type GitlabWorkflowModelSelectAskData = {
+export type PluginSelectAskData = {
   body?: {
-    models: Array<{
-      name: string
-      ref: string
+    title: string
+    options: Array<{
+      label: string
+      value: string
       isDefault?: boolean
     }>
   }
@@ -3970,19 +3972,19 @@ export type GitlabWorkflowModelSelectAskData = {
     directory?: string
     workspace?: string
   }
-  url: "/gitlab-workflow-model-select/ask"
+  url: "/plugin-select/ask"
 }
 
-export type GitlabWorkflowModelSelectAskResponses = {
+export type PluginSelectAskResponses = {
   /**
    * Selection result
    */
   200: unknown
 }
 
-export type GitlabWorkflowModelSelectReplyData = {
+export type PluginSelectReplyData = {
   body?: {
-    ref: string | null
+    value: string | null
   }
   path: {
     requestID: string
@@ -3991,28 +3993,26 @@ export type GitlabWorkflowModelSelectReplyData = {
     directory?: string
     workspace?: string
   }
-  url: "/gitlab-workflow-model-select/{requestID}/reply"
+  url: "/plugin-select/{requestID}/reply"
 }
 
-export type GitlabWorkflowModelSelectReplyErrors = {
+export type PluginSelectReplyErrors = {
   /**
    * Not found
    */
   404: NotFoundError
 }
 
-export type GitlabWorkflowModelSelectReplyError =
-  GitlabWorkflowModelSelectReplyErrors[keyof GitlabWorkflowModelSelectReplyErrors]
+export type PluginSelectReplyError = PluginSelectReplyErrors[keyof PluginSelectReplyErrors]
 
-export type GitlabWorkflowModelSelectReplyResponses = {
+export type PluginSelectReplyResponses = {
   /**
    * Reply accepted
    */
   200: boolean
 }
 
-export type GitlabWorkflowModelSelectReplyResponse =
-  GitlabWorkflowModelSelectReplyResponses[keyof GitlabWorkflowModelSelectReplyResponses]
+export type PluginSelectReplyResponse = PluginSelectReplyResponses[keyof PluginSelectReplyResponses]
 
 export type ProviderListData = {
   body?: never

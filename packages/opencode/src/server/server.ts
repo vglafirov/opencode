@@ -41,7 +41,7 @@ import { Filesystem } from "@/util/filesystem"
 import { QuestionRoutes } from "./routes/question"
 import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
-import { GitLabWorkflowModelSelectRoutes } from "./routes/gitlab-workflow-model-select"
+import { PluginSelectRoutes } from "./routes/plugin-select"
 import { MDNS } from "./mdns"
 import { lazy } from "@/util/lazy"
 import { Plugin } from "../plugin"
@@ -247,7 +247,7 @@ export namespace Server {
       .route("/session", SessionRoutes())
       .route("/permission", PermissionRoutes())
       .route("/question", QuestionRoutes())
-      .route("/gitlab-workflow-model-select", GitLabWorkflowModelSelectRoutes())
+      .route("/plugin-select", PluginSelectRoutes())
       .route("/provider", ProviderRoutes())
       .route("/", FileRoutes())
       .route("/mcp", McpRoutes())

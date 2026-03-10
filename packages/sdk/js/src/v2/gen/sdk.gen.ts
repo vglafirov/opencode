@@ -40,10 +40,6 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
-  GitlabWorkflowModelSelectAskResponses,
-  GitlabWorkflowModelSelectListResponses,
-  GitlabWorkflowModelSelectReplyErrors,
-  GitlabWorkflowModelSelectReplyResponses,
   GlobalConfigGetResponses,
   GlobalConfigUpdateErrors,
   GlobalConfigUpdateResponses,
@@ -80,6 +76,10 @@ import type {
   PermissionRespondErrors,
   PermissionRespondResponses,
   PermissionRuleset,
+  PluginSelectAskResponses,
+  PluginSelectListResponses,
+  PluginSelectReplyErrors,
+  PluginSelectReplyResponses,
   ProjectCurrentResponses,
   ProjectInitGitResponses,
   ProjectListResponses,
@@ -2484,9 +2484,9 @@ export class Question extends HeyApiClient {
   }
 }
 
-export class GitlabWorkflowModelSelect extends HeyApiClient {
+export class PluginSelect extends HeyApiClient {
   /**
-   * List pending workflow model selections
+   * List pending plugin selections
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -2506,23 +2506,24 @@ export class GitlabWorkflowModelSelect extends HeyApiClient {
         },
       ],
     )
-    return (options?.client ?? this.client).get<GitlabWorkflowModelSelectListResponses, unknown, ThrowOnError>({
-      url: "/gitlab-workflow-model-select",
+    return (options?.client ?? this.client).get<PluginSelectListResponses, unknown, ThrowOnError>({
+      url: "/plugin-select",
       ...options,
       ...params,
     })
   }
 
   /**
-   * Ask user to select a workflow model
+   * Ask user to select from options
    */
   public ask<ThrowOnError extends boolean = false>(
     parameters?: {
       directory?: string
       workspace?: string
-      models?: Array<{
-        name: string
-        ref: string
+      title?: string
+      options?: Array<{
+        label: string
+        value: string
         isDefault?: boolean
       }>
     },
@@ -2535,13 +2536,14 @@ export class GitlabWorkflowModelSelect extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { in: "body", key: "models" },
+            { in: "body", key: "title" },
+            { in: "body", key: "options" },
           ],
         },
       ],
     )
-    return (options?.client ?? this.client).post<GitlabWorkflowModelSelectAskResponses, unknown, ThrowOnError>({
-      url: "/gitlab-workflow-model-select/ask",
+    return (options?.client ?? this.client).post<PluginSelectAskResponses, unknown, ThrowOnError>({
+      url: "/plugin-select/ask",
       ...options,
       ...params,
       headers: {
@@ -2553,14 +2555,14 @@ export class GitlabWorkflowModelSelect extends HeyApiClient {
   }
 
   /**
-   * Reply to workflow model selection
+   * Reply to plugin selection
    */
   public reply<ThrowOnError extends boolean = false>(
     parameters: {
       requestID: string
       directory?: string
       workspace?: string
-      ref?: string | null
+      value?: string | null
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2572,17 +2574,13 @@ export class GitlabWorkflowModelSelect extends HeyApiClient {
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { in: "body", key: "ref" },
+            { in: "body", key: "value" },
           ],
         },
       ],
     )
-    return (options?.client ?? this.client).post<
-      GitlabWorkflowModelSelectReplyResponses,
-      GitlabWorkflowModelSelectReplyErrors,
-      ThrowOnError
-    >({
-      url: "/gitlab-workflow-model-select/{requestID}/reply",
+    return (options?.client ?? this.client).post<PluginSelectReplyResponses, PluginSelectReplyErrors, ThrowOnError>({
+      url: "/plugin-select/{requestID}/reply",
       ...options,
       ...params,
       headers: {
@@ -4072,9 +4070,9 @@ export class OpencodeClient extends HeyApiClient {
     return (this._question ??= new Question({ client: this.client }))
   }
 
-  private _gitlabWorkflowModelSelect?: GitlabWorkflowModelSelect
-  get gitlabWorkflowModelSelect(): GitlabWorkflowModelSelect {
-    return (this._gitlabWorkflowModelSelect ??= new GitlabWorkflowModelSelect({ client: this.client }))
+  private _pluginSelect?: PluginSelect
+  get pluginSelect(): PluginSelect {
+    return (this._pluginSelect ??= new PluginSelect({ client: this.client }))
   }
 
   private _provider?: Provider

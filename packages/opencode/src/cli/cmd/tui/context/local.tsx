@@ -8,7 +8,6 @@ import { Global } from "@/global"
 import { iife } from "@/util/iife"
 import { createSimpleContext } from "./helper"
 import { useToast } from "../ui/toast"
-import { isWorkflowModel } from "gitlab-ai-provider"
 import { Provider } from "@/provider/provider"
 import { useArgs } from "./args"
 import { useSDK } from "./sdk"
@@ -203,7 +202,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       })
 
       const [subModelName, setSubModelName] = createSignal<string | undefined>(undefined)
-      const [discoverTrigger, setDiscoverTrigger] = createSignal(0)
 
       return {
         current: currentModel,
@@ -216,15 +214,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         favorite() {
           return modelStore.favorite
         },
-        gitlabWorkflow: {
-          subModelName,
-          setSubModelName,
-          discoverTrigger,
-          rediscover() {
-            setSubModelName(undefined)
-            sdk.fetch(`${sdk.url}/plugin/gitlab/clear`, { method: "POST" }).catch(() => {})
-            setDiscoverTrigger((n) => n + 1)
-          },
+        subModel: {
+          name: subModelName,
+          setName: setSubModelName,
         },
         parsed: createMemo(() => {
           const value = currentModel()
@@ -300,16 +292,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
                 duration: 3000,
               })
               return
-            }
-            const prev = currentModel()
-            if (
-              options?.recent &&
-              prev?.providerID === model.providerID &&
-              prev?.modelID === model.modelID &&
-              isWorkflowModel(model.modelID)
-            ) {
-              setSubModelName(undefined)
-              setDiscoverTrigger((n) => n + 1)
             }
             setModelStore("model", agent.current().name, model)
             if (options?.recent) {

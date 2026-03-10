@@ -22,7 +22,6 @@ import { SystemPrompt } from "./system"
 import { Flag } from "@/flag/flag"
 import { PermissionNext } from "@/permission/next"
 import { Auth } from "@/auth"
-import { GitLabWorkflowLanguageModel } from "gitlab-ai-provider"
 
 export namespace LLM {
   const log = Log.create({ service: "llm" })
@@ -170,8 +169,8 @@ export namespace LLM {
       })
     }
 
-    if (language instanceof GitLabWorkflowLanguageModel) {
-      language.toolExecutor = async (name, args) => {
+    if ("toolExecutor" in language) {
+      ;(language as any).toolExecutor = async (name: string, args: string) => {
         const t = tools[name]
         if (!t || !t.execute) return { result: "", error: `Unknown tool: ${name}` }
         try {

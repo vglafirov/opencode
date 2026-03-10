@@ -1216,7 +1216,7 @@ export namespace Provider {
       const language = s.modelLoaders[model.providerID]
         ? await s.modelLoaders[model.providerID](sdk, model.api.id, provider.options)
         : sdk.languageModel(model.api.id)
-      if (!isWorkflowModel(model.api.id)) {
+      if (!("toolExecutor" in language)) {
         s.models.set(key, language)
       }
       return language

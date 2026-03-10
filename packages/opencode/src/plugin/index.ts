@@ -13,6 +13,7 @@ import { NamedError } from "@opencode-ai/util/error"
 import { CopilotAuthPlugin } from "./copilot"
 import { gitlabAuthPlugin as GitlabAuthPlugin } from "opencode-gitlab-auth"
 import { plugin as GitlabDapPlugin } from "opencode-gitlab-dap"
+import { Auth } from "../auth"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
@@ -35,9 +36,8 @@ export namespace Plugin {
       project: Instance.project,
       worktree: Instance.worktree,
       directory: Instance.directory,
-      get serverUrl(): URL {
-        throw new Error("Server URL is no longer supported in plugins")
-      },
+      serverUrl: new URL("http://localhost:4096"),
+      getAuth: (provider: string) => Auth.get(provider).catch(() => null),
       $: Bun.$,
     }
 
