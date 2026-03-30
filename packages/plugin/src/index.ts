@@ -262,4 +262,21 @@ export interface Hooks {
    * Modify tool definitions (description and parameters) sent to LLM
    */
   "tool.definition"?: (input: { toolID: string }, output: { description: string; parameters: any }) => Promise<void>
+  /**
+   * Inject additional agents into the agent list returned by GET /agent.
+   * Plugins push entries into `output.agents`.
+   */
+  "experimental.agent.list"?: (
+    input: {},
+    output: {
+      agents: Array<{
+        name: string
+        description?: string
+        mode: "subagent" | "primary" | "all"
+        model?: { providerID: string; modelID: string }
+        options?: Record<string, any>
+        permission?: Record<string, any>
+      }>
+    },
+  ) => Promise<void>
 }

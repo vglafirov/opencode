@@ -26,6 +26,7 @@ import { ExperimentalRoutes } from "./routes/experimental"
 import { ProviderRoutes } from "./routes/provider"
 import { EventRoutes } from "./routes/event"
 import { errorHandler } from "./middleware"
+import { Plugin } from "../plugin"
 
 const log = Log.create({ service: "server" })
 
@@ -181,7 +182,8 @@ export const InstanceRoutes = (app?: Hono) =>
       }),
       async (c) => {
         const modes = await Agent.list()
-        return c.json(modes)
+        const extra = await Plugin.trigger("experimental.agent.list", {}, { agents: [] })
+        return c.json([...modes, ...extra.agents])
       },
     )
     .get(
